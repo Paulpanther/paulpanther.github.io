@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shader Gen</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+
+            background: #333;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .fps {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+
+            padding: 1px 3px;
+            background: #000;
+            border-bottom-right-radius: 5px;
+            color: red;
+            font-family: sans-serif;
+
+        }
+    </style>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
+        uniform vec2 u_resolution;
+        uniform float u_time;
+        uniform vec2 u_imageSize;
+
+        varying vec2 v_texCoord;
+        varying vec2 v_resolution;
+        varying float v_time;
+        varying vec2 v_imageSize;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1);
+            v_resolution = u_resolution;
+            v_time = u_time;
+            v_texCoord = a_texCoord;
+            v_imageSize = u_imageSize;
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec2 v_resolution;
+        varying float v_time;
+
+        uniform sampler2D u_image;
+        varying vec2 v_texCoord;
+        varying vec2 v_imageSize;
+
+        vec2 vec_floor(vec2 vec) {
+            return vec2(floor(vec.x), floor(vec.y));
+        }
+
+        vec2 quad_bucketize(vec2 pos, float amount_of_buckets) {
+            return vec_floor(pos * amount_of_buckets);
+        }
+
+        vec2 triangle_bucketize(vec2 pos, float amount_of_buckets) {
+            vec2 quad_bucket = quad_bucketize(pos, amount_of_buckets / 2.);
+            vec2 offset = pos - quad_bucket / (amount_of_buckets / 2.);
+
+            if (2. * offset.x - offset.y > 0.)
+                return vec2(1.);
+
+            return vec2(0.);
+        }
+
+        float rgb2hue(vec3 col) {
+            float maxC = max(max(col.r, col.g), col.b);
+            float minC = min(max(col.r, col.g), col.b);
+            float h = 0.;
+            if (maxC == col.r) h = 60. * (0.+(col.g - col.b) / (maxC - minC));
+            if (maxC == col.g) h = 60. * (2.+(col.g - col.b) / (maxC - minC));
+            if (maxC == col.b) h = 60. * (4.+(col.g - col.b) / (maxC - minC));
+
+            if (h < 0.) h += 360.;
+
+            return h;
+        }
+
+        void main() {
+            vec2 pos = (gl_FragCoord.xy / v_resolution.xy - .5) * 2.;
+            pos.x *= v_resolution.x / v_resolution.y;
+
+            vec2 tex_pos = vec2(v_texCoord);
+
+            vec3 col = vec3(.1);
+
+            //vec2 bucket = quad_bucketize(pos, 10.);
+            //col = vec3(mod(mod(bucket.y + 1., mod(v_time, 5.)) + mod(bucket.x, mod(v_time + 4., 7.)), mod(v_time+1., 11.)));
+            //col = vec3((sin(pos.y) + col.r) / 2., mod(pos.x + col.r, 1.), col.r);
+
+            // vec2 bucket = triangle_bucketize(pos, 10.);
+            // col = vec3(bucket, 0.);
+
+            vec2 tex = v_texCoord;
+            float ratio = min(v_resolution.x / v_resolution.y, v_imageSize.x / v_imageSize.y);
+
+            col = texture2D(u_image, tex).rgb;
+
+            float hue = rgb2hue(col);
+
+            if (true/*col.b > .9 && pos.x > 0.*/) {
+                vec2 bucket = quad_bucketize(pos, 10.);
+                col = vec3(mod(mod(bucket.y + 1., mod(v_time, 5.)) + mod(bucket.x, mod(v_time + 4., 7.)), mod(v_time+1., 11.)));
+                //col = vec3((sin(pos.y) + col.r) / 2., mod(pos.x + col.r, 1.), col.r);
+            } else if ((hue < 14. || hue > 355.) && pos.y < 0. && pos.x < .1) {
+                 float radius = .2;
+                float size = 2.;
+                float width = 1./size;
+                float height = 1./(size*2.);
+
+                vec2 step = vec2(floor(pos.x * size) / size, floor(pos.y * size * 2.) / (size * 2.)) + vec2(width/2., 0);
+                vec2 left = step + vec2(-width/2., height);
+                vec2 right = step + vec2(width/2., height);
+
+                vec2 real = step;
+
+                if (distance(left, pos) < distance(step, pos))
+                    real = left;
+                else if (distance(right, pos) < distance(step, pos))
+                    real = right;
+
+
+                col = vec3(floor(mod(distance(real + vec2(width/2., 0), pos) * 40. + v_time, 2.)));
+                //vec3 col = vec3(distance(real, pos));
+                //col = vec3(mod(floor(real.x / width), 2.), mod(floor(real.y / width), 2.), 0.);
+            }
+
+            gl_FragColor = vec4(col, 1.);
+        }
+    </script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="fps" id="fps"></div>
+<script type="text/javascript" src="index.js"></script>
+</body>
+</html>
