@@ -117,10 +117,10 @@
 
             float hue = rgb2hue(col);
 
-            if (true/*col.b > .9 && pos.x > 0.*/) {
+            if (col.b > .9 && pos.x > 0.) {
                 vec2 bucket = quad_bucketize(pos, 10.);
                 col = vec3(mod(mod(bucket.y + 1., mod(v_time, 5.)) + mod(bucket.x, mod(v_time + 4., 7.)), mod(v_time+1., 11.)));
-                //col = vec3((sin(pos.y) + col.r) / 2., mod(pos.x + col.r, 1.), col.r);
+                col = vec3((sin(pos.y) + col.r) / 2., mod(pos.x + col.r, 1.), col.r);
             } else if ((hue < 14. || hue > 355.) && pos.y < 0. && pos.x < .1) {
                  float radius = .2;
                 float size = 2.;
