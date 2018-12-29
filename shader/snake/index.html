@@ -31,6 +31,27 @@
             font-family: sans-serif;
 
         }
+
+		.info {
+			display: flex;
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			color: #fff;
+
+			padding: 5px 10px;
+			border-top-right-radius: 10px;
+			background: rgba(0, 0, 0, .3);
+		}
+
+		.info p {
+			padding: 0;
+			margin: 0;
+		}
+
+		.info span {
+			color: #ff7722;
+		}
     </style>
 
     <script id="vertex-shader" type="x-shader/x-vertex">
@@ -123,6 +144,10 @@
 <body>
 <canvas id="c"></canvas>
 <div class="fps" id="fps"></div>
+<div class="info"><p>
+	Press <span>Arrow</span>-Keys to control<br>
+	Press <span>k</span> to toggle KI
+</p></div>
 <script type="text/javascript" src="index.js"></script>
 </body>
 </html>
