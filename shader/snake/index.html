@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shader Gen</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+
+            background: #333;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .fps {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+
+            padding: 1px 3px;
+            background: #000;
+            border-bottom-right-radius: 5px;
+            color: red;
+            font-family: sans-serif;
+
+        }
+    </style>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec2 a_position;
+        uniform vec2 u_resolution;
+		uniform float u_time;
+		
+		varying vec2 v_resolution;
+		varying float v_time;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1);
+            v_resolution = u_resolution;
+            v_time = u_time;
+       }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec2 v_resolution;
+        varying float v_time;
+		
+		uniform sampler2D u_cells;
+		uniform vec2 u_fieldSize;
+		
+		uniform float u_gameOver;
+		uniform float u_timeSinceUpdate;
+		uniform float u_updateCount;
+
+        vec2 vec_floor(vec2 vec) {
+            return vec2(floor(vec.x), floor(vec.y));
+        }
+
+        vec2 quad_bucketize(vec2 pos, float amount_of_buckets) {
+            return vec_floor(pos * amount_of_buckets);
+        }
+
+        float rgb2hue(vec3 col) {
+            float maxC = max(max(col.r, col.g), col.b);
+            float minC = min(max(col.r, col.g), col.b);
+            float h = 0.;
+            if (maxC == col.r) h = 60. * (0.+(col.g - col.b) / (maxC - minC));
+            if (maxC == col.g) h = 60. * (2.+(col.g - col.b) / (maxC - minC));
+            if (maxC == col.b) h = 60. * (4.+(col.g - col.b) / (maxC - minC));
+
+            if (h < 0.) h += 360.;
+
+            return h;
+        }
+
+		vec3 hue2rgb(float v, float cc) {
+			float hn = v / 60.;
+			float xc = cc * (1. - abs(mod(hn, 2.) - 1.));
+			vec3 col = vec3(0.);
+
+			if (hn >= 0. && hn < 1.) col = vec3(cc, xc, 0.);
+			if (hn >= 1. && hn < 2.) col = vec3(xc, cc, 0.);
+			if (hn >= 2. && hn < 3.) col = vec3(0., cc, xc);
+			if (hn >= 3. && hn < 4.) col = vec3(0., xc, cc);
+			if (hn >= 4. && hn < 5.) col = vec3(xc, 0., cc);
+			if (hn >= 5. && hn < 6.) col = vec3(cc, 0., xc);
+			return col;
+		}
+
+        void main() {
+            vec2 pos = gl_FragCoord.xy / v_resolution.xy;
+			float fieldRatio = u_fieldSize.y / u_fieldSize.x;	
+            float modX = v_resolution.x / v_resolution.y * fieldRatio;
+			pos.x *= modX;
+			pos.x += (1.-modX) / 2.;
+
+			vec4 tex = texture2D(u_cells, pos);
+			float snake = (tex.a + (tex.b + (tex.g + tex.r * 16.) * 16.) * 16.) * 15.;
+			
+
+			vec3 col = vec3(.1);			
+				
+			if (snake > 0.) {
+				col = hue2rgb(snake / u_updateCount * 360., 1.);
+			} else {
+
+			}
+
+			if (pos.x < 0. || pos.x > 1.) col = u_gameOver < .5 ? vec3(.5) : vec3(1.);
+			gl_FragColor = vec4(col, 1.);
+        }
+    </script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="fps" id="fps"></div>
+<script type="text/javascript" src="index.js"></script>
+</body>
+</html>
