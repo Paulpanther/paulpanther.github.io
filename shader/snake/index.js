@@ -102,7 +102,16 @@ let cells = new Uint16Array(fieldSize[0] * fieldSize[1]);
 let direction = 0;
 let head = [Math.floor(fieldSize[0]/2), Math.floor(fieldSize[1]/2)];
 let updateCount = 0;
-let kiChangeNotMadeCounter = 0;
+let kiTarget = head;
+
+const resetGame = () => {
+	cells = new Uint16Array(fieldSize[0] * fieldSize[1]);
+	head = [Math.floor(fieldSize[0]/2), Math.floor(fieldSize[1]/2)];
+	direction = 0;
+	updateCount = 0;
+	gameOver = false;
+	kiChangeNotMadeCounter = 3;
+};
 
 document.addEventListener('keypress', event => {
 	if (event.key === 'ArrowLeft') direction = 0;
@@ -110,6 +119,7 @@ document.addEventListener('keypress', event => {
 	else if (event.key === 'ArrowRight') direction = 2;
 	else if (event.key === 'ArrowDown') direction = 3;
 	else if (event.key === 'k') ki = !ki;	
+	else if (event.key === 'r') gameOver = true;
 
 	return false;
 });
@@ -125,28 +135,16 @@ const posToIndex = (x, y) => {
 	return y * fieldSize[0] + x;
 };
 
-const resetGame = () => {
-	cells = new Uint16Array(fieldSize[0] * fieldSize[1]);
-	head = [Math.floor(fieldSize[0]/2), Math.floor(fieldSize[1]/2)];
-	direction = 0;
-	updateCount = 0;
-	gameOver = false;
-};
-
 const kiDirection = () => {
-	const relativeDistanceToCenterX = 1 - Math.min(head[0], fieldSize[0] - head[0]) / (fieldSize[0] / 2);
-	const relativeDistanceToCenterY = 1 - Math.min(head[1], fieldSize[1] - head[1]) / (fieldSize[1] / 2);
-	const relativeDistanceToCenter = Math.max(relativeDistanceToCenterX, relativeDistanceToCenterY);
-		
-	const changeDir = Math.random() < kiChangeNotMadeCounter / ((1 - relativeDistanceToCenter) * 60); 
-	if (changeDir) {
-		kiChangeNotMadeCounter = 0;
-		const newDir = (Math.floor(Math.random() * 2) * 2 - 1 + direction) % 4;
-		return newDir;
-	} else {
-		kiChangeNotMadeCounter++;
-		return direction;
+	if (kiTarget[0] === head[0] && kiTarget[1] === head[1]) {
+		kiTarget[0] = Math.floor(Math.random() * fieldSize[0]);
+		kiTarget[1] = Math.floor(Math.random() * fieldSize[1]);
 	}
+
+	const xDir = kiTarget[0] > head[0] ? 1 : -1;
+	const yDir = kiTarget[1] > head[1] ? -1 : 1;
+
+	return kiTarget[0] === head[0] ? yDir + 2 : xDir + 1;
 };
 
 const updateTron = () => {
