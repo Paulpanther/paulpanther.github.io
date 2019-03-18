@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shader Gen</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+
+            background: #333;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .fps {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+
+            padding: 1px 3px;
+            background: #000;
+            border-bottom-right-radius: 5px;
+            color: red;
+            font-family: sans-serif;
+
+        }
+
+		.info {
+			display: flex;
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			color: #fff;
+
+			padding: 5px 10px;
+			border-top-right-radius: 10px;
+			background: rgba(0, 0, 0, .3);
+		}
+
+		.info p {
+			padding: 0;
+			margin: 0;
+		}
+
+		.info span {
+			color: #ff7722;
+		}
+    </style>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec2 a_position;
+        uniform vec2 u_resolution;
+		uniform float u_time;
+		
+		varying vec2 v_resolution;
+		varying float v_time;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1);
+            v_resolution = u_resolution;
+            v_time = u_time;
+       }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec2 v_resolution;
+        varying float v_time;
+		
+		uniform sampler2D u_cells;
+		uniform vec2 u_fieldSize;
+		
+		uniform float u_gameOver;
+		uniform float u_timeSinceUpdate;
+		uniform float u_updateCount;
+
+        vec2 vec_floor(vec2 vec) {
+            return vec2(floor(vec.x), floor(vec.y));
+        }
+
+        vec2 quad_bucketize(vec2 pos, float amount_of_buckets) {
+            return vec_floor(pos * amount_of_buckets);
+        }
+
+		vec2 rect_bucketize(vec2 pos, vec2 buckets) {
+			return vec_floor(pos * buckets);
+		}
+
+        float rgb2hue(vec3 col) {
+            float maxC = max(max(col.r, col.g), col.b);
+            float minC = min(max(col.r, col.g), col.b);
+            float h = 0.;
+            if (maxC == col.r) h = 60. * (0.+(col.g - col.b) / (maxC - minC));
+            if (maxC == col.g) h = 60. * (2.+(col.g - col.b) / (maxC - minC));
+            if (maxC == col.b) h = 60. * (4.+(col.g - col.b) / (maxC - minC));
+
+            if (h < 0.) h += 360.;
+
+            return h;
+        }
+
+		vec3 hue2rgb(float v, float cc) {
+			float hn = v / 60.;
+			float xc = cc * (1. - abs(mod(hn, 2.) - 1.));
+			vec3 col = vec3(0.);
+
+			if (hn >= 0. && hn < 1.) col = vec3(cc, xc, 0.);
+			if (hn >= 1. && hn < 2.) col = vec3(xc, cc, 0.);
+			if (hn >= 2. && hn < 3.) col = vec3(0., cc, xc);
+			if (hn >= 3. && hn < 4.) col = vec3(0., xc, cc);
+			if (hn >= 4. && hn < 5.) col = vec3(xc, 0., cc);
+			if (hn >= 5. && hn < 6.) col = vec3(cc, 0., xc);
+			return col;
+		}
+
+        void main() {
+            vec2 pos = gl_FragCoord.xy / v_resolution.xy;
+			float fieldRatio = u_fieldSize.y / u_fieldSize.x;	
+            float modX = v_resolution.x / v_resolution.y * fieldRatio;
+			pos.x *= modX;
+			pos.x += (1.-modX) / 2.;
+
+			vec4 tex = texture2D(u_cells, pos);
+			float snake = floor(tex.a * 15.) + (floor(tex.b * 15.) + (floor(tex.g * 15.) + floor(tex.r * 15.) * 16.) * 16.) * 16.;
+			
+			float bg = .1;
+			float showCells = 60.;
+			vec3 col = vec3(bg);			
+			float border = .0005;
+			
+			vec2 cell = rect_bucketize(pos, u_fieldSize);
+
+			col = vec3(bg) + vec3(max(sin((v_time / 5. + cell.x + cell.y) * 10.), 0.)) * .1;
+
+			// Draw Border
+			if (rect_bucketize(pos + vec2(border, 0.), u_fieldSize) != cell ||
+				rect_bucketize(pos + vec2(-border, 0.), u_fieldSize) != cell ||
+				rect_bucketize(pos + vec2(0., border), u_fieldSize) != cell ||
+				rect_bucketize(pos + vec2(0., -border), u_fieldSize) != cell) {
+				col = vec3(0.);
+			}   
+	
+			// Draw Snake
+			if (snake > 0.) {
+				if (snake > u_updateCount - showCells) {
+					col += vec3((showCells - u_updateCount + snake) / showCells);
+				}
+
+				if (snake > u_updateCount - 2.) {
+					col = vec3(1., .5, .2);
+				}
+			}
+
+			if (pos.x < 0. || pos.x > 1.) col = u_gameOver < .5 ? vec3(.5) : vec3(1.);
+			gl_FragColor = vec4(col, 1.);
+        }
+    </script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="fps" id="fps"></div>
+<div class="info"><p>
+	Press <span>Arrow</span>-Keys to control<br>
+	Press <span>k</span> to toggle KI
+</p></div>
+<script type="text/javascript" src="index.js"></script>
+</body>
+</html>
