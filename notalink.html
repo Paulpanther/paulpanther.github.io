@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Link</title>
+</head>
+<body>
+<a style="position: fixed; font-size: 20px" id="link" href="https://www.dropbox.com/s/lbyp8l36fsulcui/Presentation.pptx?dl=0">Link</a>
+<script>
+var link = document.getElementById('link');
+function where()  {
+  link.style.top = Math.random() * 1000 + "px";
+  link.style.left = Math.random() * 1000 + "px";
+  window.requestAnimationFrame(where);
+}
+
+window.requestAnimationFrame(where);
+</script>
+</body>
+</html>
